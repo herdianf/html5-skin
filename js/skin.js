@@ -126,6 +126,9 @@ var Skin = React.createClass({
             icon="share">
             <SharePanel
               {...this.props}
+              isLiveStream={this.state.isLiveStream}
+              currentPlayhead={this.state.currentPlayhead}
+              duration={this.state.duration}
               assetId={this.state.assetId}
               playerParam={this.state.playerParam}
               contentTree={this.state.contentTree} />

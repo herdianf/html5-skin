@@ -22,7 +22,12 @@ var SharePanel = React.createClass({
     };
   },
 
+  handleCheckboxClick: function(event) {
+    this.setState({shareAtTime: event.target.checked});
+  },
+
   getActivePanel: function() {
+    var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? Utils.formatSeconds(parseInt(this.props.currentPlayhead)) : null;
     if (this.state.activeTab === this.tabs.SHARE) {
       var titleString = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.SHARE_CALL_TO_ACTION, this.props.localizableStrings);
 
@@ -33,6 +38,7 @@ var SharePanel = React.createClass({
           <a className="oo-facebook" onClick={this.handleFacebookClick}> </a>
           <a className="oo-google-plus" onClick={this.handleGPlusClick}> </a>
           <a className="oo-email-share" onClick={this.handleEmailClick}> </a>
+          <label className="share-check-label"><input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} /> Share At {playheadTime}</label>
         </div>
       );
     }
@@ -43,6 +49,11 @@ var SharePanel = React.createClass({
           .replace("<ASSET_ID>", this.props.assetId)
           .replace("<PLAYER_ID>", this.props.playerParam.playerBrandingId)
           .replace("<PUBLISHER_ID>", this.props.playerParam.pcode);
+
+		if (this.state.shareAtTime) {
+			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+parseInt(this.props.currentPlayhead)+'&options[autoplay]=true&pcode=');
+		}
+
       } catch(err) {
         iframeURL = "";
       }
@@ -53,9 +64,20 @@ var SharePanel = React.createClass({
                     rows="3"
                     value={iframeURL}
                     readOnly />
+          <label className="share-check-label"><input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} /> Share At {playheadTime}</label>
         </div>
       );
     }
+  },
+
+  getShareLocation: function() {
+	var shareAtTime = this.state.shareAtTime || false;
+	var href = location.href;
+    var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+	if (shareAtTime) {
+		href += ( location.search ? '&' : '?' ) + 't='+playheadTime;
+	}
+	return href;
   },
 
   handleEmailClick: function(event) {
@@ -63,7 +85,7 @@ var SharePanel = React.createClass({
     var emailBody = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.EMAIL_BODY, this.props.localizableStrings);
     var mailToUrl = "mailto:";
     mailToUrl += "?subject=" + encodeURIComponent(this.props.contentTree.title);
-    mailToUrl += "&body=" + encodeURIComponent(emailBody + location.href);
+    mailToUrl += "&body=" + encodeURIComponent(emailBody + this.getShareLocation());
     //location.href = mailToUrl; //same window
     var emailWindow = window.open(mailToUrl, "email", "height=315,width=780"); //new window
     setTimeout(function(){
@@ -79,20 +101,20 @@ var SharePanel = React.createClass({
 
   handleFacebookClick: function() {
     var facebookUrl = "http://www.facebook.com/sharer.php";
-    facebookUrl += "?u=" + encodeURIComponent(location.href);
+    facebookUrl += "?u=" + encodeURIComponent(this.getShareLocation());
     window.open(facebookUrl, "facebook window", "height=315,width=780");
   },
 
   handleGPlusClick: function() {
     var gPlusUrl = "https://plus.google.com/share";
-    gPlusUrl += "?url=" + encodeURIComponent(location.href);
+    gPlusUrl += "?url=" + encodeURIComponent(this.getShareLocation());
     window.open(gPlusUrl, "google+ window", "menubar=no,toolbar=no,resizable=yes,scrollbars=yes,height=600,width=600");
   },
 
   handleTwitterClick: function() {
     var twitterUrl = "https://twitter.com/intent/tweet";
     twitterUrl += "?text=" + encodeURIComponent(this.props.contentTree.title+": ");
-    twitterUrl += "&url=" + encodeURIComponent(location.href);
+    twitterUrl += "&url=" + encodeURIComponent(this.getShareLocation());
     window.open(twitterUrl, "twitter window", "height=300,width=750");
   },
 

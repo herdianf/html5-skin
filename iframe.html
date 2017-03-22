@@ -63,6 +63,7 @@
     }
 
     OO.ready(function() {
+      console.info(playerParam)
       window.pp = OO.Player.create('container', queryParams.match(/ec=([^&]*)/)[1], playerParam);
     });
   </script>
