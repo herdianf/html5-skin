@@ -71,13 +71,28 @@ var SharePanel = React.createClass({
   },
 
   getShareLocation: function() {
-	var shareAtTime = this.state.shareAtTime || false;
-	var href = location.href;
-    var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+    var shareAtTime = this.state.shareAtTime || false;
 	if (shareAtTime) {
-		href += ( location.search ? '&' : '?' ) + 't='+playheadTime;
+	  var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+	  var qs= location.search ? location.search.substring(1).split('&')
+		.map(function(x){
+			return x.split('=',2).map(function(i){
+				return decodeURI(i.trim()).replace('+', ' ');
+			})
+		})
+	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
+	  qs['t']=playheadTime;
+	  qs['autoplay']=1;
+
+	  var str=''
+	  for(var k in qs) {
+		if (str.length > 0) str += '&';
+		str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
+	  }
+	  return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
+	} else{ 
+		return location.href;
 	}
-	return href;
   },
 
   handleEmailClick: function(event) {

@@ -125,7 +125,8 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       "isInitialPlay": false,
       "isFullScreenSupported": false,
       "isVideoFullScreenSupported": false,
-      "isFullWindow": false
+      "isFullWindow": false,
+	  "isPlaying": false
     };
 
     this.init();
@@ -1061,9 +1062,11 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
           break;
         case CONSTANTS.STATE.PAUSE:
           this.mb.publish(OO.EVENTS.PLAY);
+		  this.state.isPlaying = true;
           break;
         case CONSTANTS.STATE.PLAYING:
           this.mb.publish(OO.EVENTS.PAUSE);
+		  this.state.isPlaying = false;
           break;
       }
     },
@@ -1127,6 +1130,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
           this.pausedCallback = function() {
             this.state.pluginsElement.addClass("oo-overlay-blur");
             this.state.screenToShow = CONSTANTS.SCREEN.SHARE_SCREEN;
+			this.state.isPlaying = true;
             this.renderSkin();
           }.bind(this);
           this.mb.publish(OO.EVENTS.PAUSE);
@@ -1237,6 +1241,9 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.state.pauseAnimationDisabled = true;
       if (this.state.playerState == CONSTANTS.STATE.PAUSE) {
         this.state.screenToShow = CONSTANTS.SCREEN.PAUSE_SCREEN;
+		if (this.state.isPlaying == true){
+			this.mb.publish(OO.EVENTS.PLAY);
+		}
       }
       else if (this.state.playerState == CONSTANTS.STATE.END) {
         this.state.screenToShow = CONSTANTS.SCREEN.END_SCREEN;
