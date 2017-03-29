@@ -98,40 +98,6 @@ var ControlBar = React.createClass({
   handleShareClick: function() {
     this.props.controller.toggleShareScreen();
   },
-  
-  getShareLocation: function() {
-	  var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
-	  var qs= location.search ? location.search.substring(1).split('&')
-		.map(function(x){
-			return x.split('=',2).map(function(i){
-				return decodeURI(i.trim()).replace('+', ' ');
-			})
-		})
-	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
-	  qs['t']=playheadTime;
-	  qs['autoplay']=1;
-
-	  var str=''
-	  for(var k in qs) {
-		if (str.length > 0) str += '&';
-		str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
-	  }
-	  return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
-  },
-  
-  handleTimeShareClick: function() {
-	  
-    var el = document.createElement('input'); 
-	el.setAttribute('type', 'text');
-	el.setAttribute('value', this.getShareLocation());
-	el.setAttribute('style', 'position:absolute; top:-10000px; left:-10000px;');
-	document.body.appendChild(el);
-	el.select();
-	if (document.execCommand('copy')) {
-		alert("Link copied")
-	}
-	  
-  },
 
   handleQualityClick: function() {
     if(this.props.responsiveView == this.props.skinConfig.responsive.breakpoints.xs.id) {
@@ -363,12 +329,6 @@ var ControlBar = React.createClass({
           </a>
         </div>
       ),
-
-      "timeShare": <a className="oo-time-share oo-control-bar-item"
-        onClick={this.handleTimeShareClick} key="timeShare">
-        <Icon {...this.props} icon="discovery" style={dynamicStyles.iconCharacter}
-          onMouseOver={this.highlight} onMouseOut={this.removeHighlight}/>
-      </a>,
 	  
       "share": <a className="oo-share oo-control-bar-item"
         onClick={this.handleShareClick} key="share">

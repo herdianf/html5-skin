@@ -26,24 +26,69 @@ var SharePanel = React.createClass({
     this.setState({shareAtTime: event.target.checked});
   },
 
+  handleUrlClick: function(event) {
+    var target = event.target,
+        currentFocus = document.activeElement;
+    target.focus();
+    target.setSelectionRange(0, target.value.length);
+    var succeed=false;
+    try {
+        succeed = document.execCommand("copy");
+        if (succeed) {
+            alert("URL copied to clipboard")
+        }
+    } catch(e) {
+        succeed = false;
+        target.removeAttribute('readonly');
+    }
+    if (currentFocus)
+        currentFocus.focus()
+  },
+
+  handleTimeChange: function(event) {
+    var el = event.target,
+        value = el.value;
+    var a = value.split(':');
+    var seconds = a.pop();
+    var minutes = a.length > 0 ? a.pop() : 0;
+    var hours = a.length > 0 ? a.pop() : 0;
+    var totalSeconds = ((+hours) * 60 * 60) + ((+minutes) * 60) + (+seconds);
+    if (totalSeconds > this.props.duration) {
+      totalSeconds=this.props.duration;
+    }
+
+    var params = {userPlayHeadTime: totalSeconds, shareAtTime: true}
+    this.setState(params);
+  },
+
   getActivePanel: function() {
-    var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? Utils.formatSeconds(parseInt(this.props.currentPlayhead)) : null;
+    var initialTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : 0;
+    if ( this.state.userPlayHeadTime ) {
+        initialTime = parseInt(this.state.userPlayHeadTime);
+    }
+
+    var playheadTime = Utils.formatSeconds(initialTime);
+
     if (this.state.activeTab === this.tabs.SHARE) {
       var titleString = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.SHARE_CALL_TO_ACTION, this.props.localizableStrings);
+      var shareUrl = this.getShareLocation();
 
       return (
         <div className="oo-share-tab-panel">
           <div className="oo-social-action-text oo-text-capitalize">{titleString}</div>
           <a className="oo-twitter" onClick={this.handleTwitterClick}> </a>
           <a className="oo-facebook" onClick={this.handleFacebookClick}> </a>
-          <a className="oo-google-plus" onClick={this.handleGPlusClick}> </a>
+          <a className="oo-linkedin" onClick={this.handleLinkedInClick}> </a>
           <a className="oo-email-share" onClick={this.handleEmailClick}> </a>
-          <label className="share-check-label"><input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} /> Share At {playheadTime}</label>
+          <div className="share-url-text"><input type="url" readOnly value={shareUrl} onClick={this.handleUrlClick}/></div>
+          <label className="share-check-label">
+            <input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} />
+            Share At
+          </label>
+          <input className="share-time-text" type="text" value={playheadTime} onChange={this.handleTimeChange} />
         </div>
       );
-    }
-
-    else if (this.state.activeTab === this.tabs.EMBED) {
+    } else if (this.state.activeTab === this.tabs.EMBED) {
       try {
         var iframeURL = this.props.skinConfig.shareScreen.embed.source
           .replace("<ASSET_ID>", this.props.assetId)
@@ -51,7 +96,7 @@ var SharePanel = React.createClass({
           .replace("<PUBLISHER_ID>", this.props.playerParam.pcode);
 
 		if (this.state.shareAtTime) {
-			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+parseInt(this.props.currentPlayhead)+'&options[autoplay]=true&pcode=');
+			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&pcode=');
 		}
 
       } catch(err) {
@@ -64,7 +109,11 @@ var SharePanel = React.createClass({
                     rows="3"
                     value={iframeURL}
                     readOnly />
-          <label className="share-check-label"><input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} /> Share At {playheadTime}</label>
+          <label className="share-check-label">
+            <input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} />
+            Share At
+          </label>
+          <input className="share-time-text" type="text" value={playheadTime} onChange={this.handleTimeChange} />
         </div>
       );
     }
@@ -74,6 +123,9 @@ var SharePanel = React.createClass({
     var shareAtTime = this.state.shareAtTime || false;
 	if (shareAtTime) {
 	  var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+	  if ( this.state.userPlayHeadTime ) {
+	    playheadTime = parseInt(this.state.userPlayHeadTime);
+	  }
 	  var qs= location.search ? location.search.substring(1).split('&')
 		.map(function(x){
 			return x.split('=',2).map(function(i){
@@ -82,8 +134,6 @@ var SharePanel = React.createClass({
 		})
 	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
 	  qs['t']=playheadTime;
-	  qs['autoplay']=1;
-
 	  var str=''
 	  for(var k in qs) {
 		if (str.length > 0) str += '&';
@@ -91,7 +141,7 @@ var SharePanel = React.createClass({
 	  }
 	  return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
 	} else{ 
-		return location.href;
+	  return location.href;
 	}
   },
 
@@ -112,6 +162,14 @@ var SharePanel = React.createClass({
       } catch(e) {};
       // Generous 2 second timeout to give the window time to redirect if it's going to a web client
     }, 2000);
+  },
+
+  handleLinkedInClick: function() {
+    var linkedInUrl = 'https://www.linkedin.com/shareArticle?mini=true'+
+        '&url='+encodeURIComponent(this.getShareLocation()) +
+        '&title='+encodeURIComponent(this.props.contentTree.title)+
+        '&source=ChannelNewsAsia.com';
+    window.open(linkedInUrl, "linkedin window", "height=315,width=780");
   },
 
   handleFacebookClick: function() {
