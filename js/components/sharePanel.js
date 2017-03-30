@@ -34,9 +34,6 @@ var SharePanel = React.createClass({
     var succeed=false;
     try {
         succeed = document.execCommand("copy");
-        if (succeed) {
-            alert("URL copied to clipboard")
-        }
     } catch(e) {
         succeed = false;
         target.removeAttribute('readonly');
@@ -109,11 +106,6 @@ var SharePanel = React.createClass({
                     rows="3"
                     value={iframeURL}
                     readOnly />
-          <label className="share-check-label">
-            <input type="checkbox" checked={this.state.shareAtTime} onChange={this.handleCheckboxClick} />
-            Share At
-          </label>
-          <input className="share-time-text" type="text" value={playheadTime} onChange={this.handleTimeChange} />
         </div>
       );
     }
@@ -134,6 +126,7 @@ var SharePanel = React.createClass({
 		})
 	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
 	  qs['t']=playheadTime;
+	  qs['autoplay']='1';
 	  var str=''
 	  for(var k in qs) {
 		if (str.length > 0) str += '&';
