@@ -73,8 +73,8 @@ var SharePanel = React.createClass({
       return (
         <div className="oo-share-tab-panel">
           <div className="oo-social-action-text oo-text-capitalize">{titleString}</div>
-          <a className="oo-twitter" onClick={this.handleTwitterClick}> </a>
           <a className="oo-facebook" onClick={this.handleFacebookClick}> </a>
+          <a className="oo-twitter" onClick={this.handleTwitterClick}> </a>
           <a className="oo-linkedin" onClick={this.handleLinkedInClick}> </a>
           <a className="oo-email-share" onClick={this.handleEmailClick}> </a>
           <div className="share-url-text"><input type="url" readOnly value={shareUrl} onClick={this.handleUrlClick}/></div>
