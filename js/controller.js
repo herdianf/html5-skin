@@ -397,6 +397,12 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         //adVideoDuration is only used in adPanel ad marquee
         this.state.adVideoDuration = duration;
       }
+      if (!this.state.seeking) {
+        this.skin.updatePlayhead(currentPlayhead, duration, buffered);
+      } else {
+        this.state.queuedPlayheadUpdate = [currentPlayhead, duration, buffered];
+      }
+      
       // The code inside if statement is only for up next, however, up next does not apply to Ad screen.
       // So we only need to update the playhead for ad screen.
       this.state.duration = duration;
@@ -410,11 +416,6 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         } else if (this.state.playerState === CONSTANTS.STATE.PAUSE) {
           this.state.screenToShow = CONSTANTS.SCREEN.PAUSE_SCREEN;
         }
-      }
-      if (!this.state.seeking) {
-        this.skin.updatePlayhead(currentPlayhead, duration, buffered);
-      } else {
-        this.state.queuedPlayheadUpdate = [currentPlayhead, duration, buffered];
       }
     },
 

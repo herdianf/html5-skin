@@ -93,7 +93,7 @@ var SharePanel = React.createClass({
           .replace("<PUBLISHER_ID>", this.props.playerParam.pcode);
 
 		if (this.state.shareAtTime) {
-			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&pcode=');
+			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&view=embed&pcode=');
 		}
 
       } catch(err) {
@@ -119,7 +119,7 @@ var SharePanel = React.createClass({
 	    playheadTime = parseInt(this.state.userPlayHeadTime);
 	  }
       var urlparser = document.createElement('a')
-      urlparser.href = window.videoInfo.url ? window.videoInfo.url : location.href;
+      urlparser.href = window.videoInfo && window.videoInfo.url ? window.videoInfo.url : location.href;
 	  var qs= urlparser.search ? urlparser.search.substring(1).split('&')
 		.map(function(x){
 			return x.split('=',2).map(function(i){

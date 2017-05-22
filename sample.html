@@ -35,7 +35,7 @@
   var qs= location.search ? location.search.substring(1).split('&')
 	.map(function(x){
 		return x.split('=',2).map(function(i){
-			return decodeURI(i.trim()).replace('+', ' ');
+			return decodeURIComponent(i.trim()).replace('+', ' ');
 		})
 	})
    .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
