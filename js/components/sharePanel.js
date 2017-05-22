@@ -118,15 +118,18 @@ var SharePanel = React.createClass({
 	  if ( this.state.userPlayHeadTime ) {
 	    playheadTime = parseInt(this.state.userPlayHeadTime);
 	  }
-	  var qs= location.search ? location.search.substring(1).split('&')
+      var urlparser = document.createElement('a')
+      urlparser.href = window.videoInfo.url ? window.videoInfo.url : location.href;
+	  var qs= urlparser.search ? urlparser.search.substring(1).split('&')
 		.map(function(x){
 			return x.split('=',2).map(function(i){
-				return decodeURI(i.trim()).replace('+', ' ');
+				return decodeURIComponent(i.trim()).replace('+', ' ');
 			})
 		})
 	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
 	  qs['t']=playheadTime;
 	  qs['autoplay']='1';
+      qs['view']='embed';
 	  var str=''
 	  for(var k in qs) {
 		if (str.length > 0) str += '&';
