@@ -4,15 +4,11 @@ var Popover = React.createClass({
 
   render: function() {
     return (
-      <div className={this.props.popoverClassName}>
+      <div className="oo-popover">
         {this.props.children}
       </div>
     );
   }
 });
-
-Popover.defaultProps = {
-  popoverClassName: 'oo-popover',
-};
 
 module.exports = Popover;

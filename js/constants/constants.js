@@ -101,10 +101,6 @@ module.exports = {
     DEFAULT_SCRUBBERBAR_LEFT_RIGHT_PADDING: 15
   },
 
-  WATERMARK: {
-    DEFAULT_SCALING_PERCENTAGE: 10
-  },
-
   AD_CLICK_SOURCE:{
     VIDEO_WINDOW: "videoWindow",
     LEARN_MORE_BUTTON: "learnMoreButton",
@@ -113,13 +109,6 @@ module.exports = {
 
   PAUSE_REASON: {
     TRANSITION: "transition"
-  },
-
-  MEDIA_TYPE: {
-    HTML5: "html5",
-    FLASH: "flash",
-    VIDEO: "video",
-    OBJECT: "object"
   },
 
   ERROR_MESSAGE: {
@@ -265,11 +254,11 @@ module.exports = {
     },
     "unsupported_encoding":{
       name: "OO.ERROR.VC.UNSUPPORTED_ENCODING",
-      description: "This video isn't encoded for your device"
+      description: "Something happened while we were trying to play your video! Click replay or simply reload your page."
     },
     "unable_to_create_video_element":{
       name: "OO.ERROR.VC.UNABLE_TO_CREATE_VIDEO_ELEMENT",
       description: "Something happened while we were trying to play your video! Click replay or simply reload your page."
     }
   }
-};
+}

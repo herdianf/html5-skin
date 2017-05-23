@@ -4,7 +4,7 @@
   position: relative;
   width: 100%;
   height: $scrubber-bar-padding-height;
-  z-index: $zindex-scrubber-bar;
+  z-index: 12600;
   @include vendor-prefixes(user-select, none);
 
   .oo-scrubber-bar-padding {
@@ -63,7 +63,7 @@
       width: 25px;
       height: 25px;
       position: absolute;
-      z-index: $zindex-playhead-padding;
+      z-index: 1;
       top: 100%;
       transition: opacity 0.25s;
       @include vendor-prefixes(transform, translateY(-50%) translateX(-50%));

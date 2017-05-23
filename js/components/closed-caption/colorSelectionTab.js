@@ -80,7 +80,6 @@ var ColorSelectionTab = React.createClass({
             >
             <div className="oo-text-color-items-container">
               <ColorSelector
-                {...this.props}
                 colors={this.state.textColors}
                 onColorChange={this.changeTextColor}
                 selectedColor={this.props.closedCaptionOptions.textColor}
@@ -94,7 +93,6 @@ var ColorSelectionTab = React.createClass({
             selectionText={backgroundColorSelection}
             >
             <ColorSelector
-              {...this.props}
               colors={this.state.backgroundColors}
               onColorChange={this.changeBackgroundColor}
               selectedColor={this.props.closedCaptionOptions.backgroundColor}
@@ -107,7 +105,6 @@ var ColorSelectionTab = React.createClass({
             selectionText={windowColorSelection}
             >
             <ColorSelector
-              {...this.props}
               colors={this.state.windowColors}
               onColorChange={this.changeWindowColor}
               selectedColor={this.props.closedCaptionOptions.windowColor}

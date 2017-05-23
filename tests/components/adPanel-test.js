@@ -18,7 +18,6 @@ describe('AdPanel', function () {
     var mockSkinConfig = {
       adScreen: {
         showControlBar: true,
-        showAdCountDown: true,
         showAdMarquee: true
       },
       icons: {
@@ -29,8 +28,7 @@ describe('AdPanel', function () {
     };
     var currentAdsInfo = {
       currentAdItem: {
-        name: "Test Ad",
-        isLive: true
+        name: "Test Ad"
       }
     };
     var DOM = TestUtils.renderIntoDocument(
@@ -61,7 +59,6 @@ describe('AdPanel', function () {
     var mockSkinConfig = {
       adScreen: {
         showControlBar: true,
-        showAdCountDown: true,
         showAdMarquee: true
       },
       icons: {
@@ -78,8 +75,7 @@ describe('AdPanel', function () {
         name: "Test Ad",
         skippable: true,
         skipAdButtonEnabled: true,
-        hasClickUrl: true,
-        isLive: false
+        hasClickUrl: true
       }
     };
     var DOM = TestUtils.renderIntoDocument(
@@ -113,7 +109,6 @@ describe('AdPanel', function () {
     var mockSkinConfig = {
       adScreen: {
         showControlBar: true,
-        showAdCountDown: false,
         showAdMarquee: true
       },
       icons: {
@@ -126,7 +121,7 @@ describe('AdPanel', function () {
       numberOfAds: 1,
       currentAdItem: {
         name: "Test Ad",
-        indexInPod: 1
+        indexInPod: 1,
       }
     };
     var DOM = TestUtils.renderIntoDocument(

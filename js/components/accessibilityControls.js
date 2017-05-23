@@ -6,15 +6,11 @@ var AccessibilityControls = function (controller) {
       "fastForwardRate": 1,
       "lastKeyDownTime": null
     };
-    this.keyEvent = this.handleKey.bind(this);
-    document.addEventListener("keydown", this.keyEvent);
+    document.addEventListener("keydown", this.handleKey.bind(this));
 };
+module.exports = AccessibilityControls;
 
 AccessibilityControls.prototype = {
-  cleanUp : function() {
-    document.removeEventListener("keydown", this.keyEvent);
-  },
-
   handleKey: function(e) {
     if (!this.controller.state.accessibilityControlsEnabled){
       return;
@@ -75,5 +71,3 @@ AccessibilityControls.prototype = {
     }
   }
 };
-
-module.exports = AccessibilityControls;

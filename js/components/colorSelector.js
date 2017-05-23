@@ -17,16 +17,8 @@ var ColorSelector = React.createClass({
   render: function() {
     var colorItems = [];
     for (var i = 0; i < this.props.colors.length; i++) {
-      //accent color
-      var activeColorStyle = {};
-      if (this.props.enabled && this.props.selectedColor == this.props.colors[i] && this.props.skinConfig.general.accentColor) {
-        var selectedColorStyle =  "solid ";
-        selectedColorStyle += this.props.skinConfig.general.accentColor;
-        activeColorStyle = {border: selectedColorStyle};
-      }
-
       colorItems.push(
-        <div className={this.setClassname(this.props.colors[i])} key={i} style={activeColorStyle}>
+        <div className={this.setClassname(this.props.colors[i])} key={i}>
           <a className={"oo-color-item oo-color-item-" + this.props.colors[i]} onClick={this.handleColorSelection.bind(this, this.props.colors[i])}></a>
         </div>
       );

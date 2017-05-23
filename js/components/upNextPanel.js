@@ -35,10 +35,9 @@ var UpNextPanel = React.createClass({
 
   render: function() {
     var upNextString = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.UP_NEXT, this.props.localizableStrings);
-    var thumbnailStyle = {};
-    if (Utils.isValidString(this.props.upNextInfo.upNextData.preview_image_url)) {
-      thumbnailStyle.backgroundImage = "url('" + this.props.upNextInfo.upNextData.preview_image_url + "')";
-    }
+    var thumbnailStyle = {
+      backgroundImage: "url('" + this.props.upNextInfo.upNextData.preview_image_url + "')"
+    };
 
     return (
       <div className="oo-up-next-panel">
@@ -51,11 +50,13 @@ var UpNextPanel = React.createClass({
             <CountDownClock {...this.props} timeToShow={this.props.skinConfig.upNext.timeToShow} currentPlayhead={this.props.currentPlayhead}/>
 
             <div className="oo-up-next-title-text oo-text-truncate">
-              {upNextString}: <span dangerouslySetInnerHTML={Utils.createMarkup(this.props.upNextInfo.upNextData.name)}></span>
+              {upNextString}: {this.props.upNextInfo.upNextData.name}
             </div>
           </div>
 
-          <div className="oo-content-description oo-text-truncate" dangerouslySetInnerHTML={Utils.createMarkup(this.props.upNextInfo.upNextData.description)}></div>
+          <div className="oo-content-description oo-text-truncate">
+            {this.props.upNextInfo.upNextData.description}
+          </div>
         </div>
 
         <CloseButton {...this.props}
@@ -75,7 +76,7 @@ UpNextPanel.propTypes = {
   }),
   skinConfig: React.PropTypes.shape({
     upNext: React.PropTypes.shape({
-      timeToShow: React.PropTypes.number
+      timeToShow: React.PropTypes.string
     }),
     icons: React.PropTypes.objectOf(React.PropTypes.object)
   })
@@ -84,7 +85,7 @@ UpNextPanel.propTypes = {
 UpNextPanel.defaultProps = {
   skinConfig: {
     upNext: {
-      timeToShow: 10
+      timeToShow: "10"
     },
     icons: {
       play:{fontStyleClass:'oo-icon oo-icon-play'},

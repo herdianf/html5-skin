@@ -7,7 +7,6 @@ var React = require('react'),
     CONSTANTS = require('../constants/constants'),
     Spinner = require('../components/spinner'),
     Icon = require('../components/icon'),
-    Watermark = require('../components/watermark'),
     ResizeMixin = require('../mixins/resizeMixin'),
     Utils = require('../components/utils');
 
@@ -25,17 +24,10 @@ var StartScreen = React.createClass({
     this.handleResize();
   },
 
-  componentWillReceiveProps: function(nextProps) {
-    if (nextProps.contentTree.description != this.props.contentTree.description) {
-      this.handleResize(nextProps);
-    }
-  },
-
-  handleResize: function(nextProps) {
-    var description = nextProps ? nextProps.contentTree.description : this.props.contentTree.description;
+  handleResize: function() {
     if (ReactDOM.findDOMNode(this.refs.description)){
       this.setState({
-        descriptionText: Utils.truncateTextToWidth(ReactDOM.findDOMNode(this.refs.description), description)
+        descriptionText: Utils.truncateTextToWidth(ReactDOM.findDOMNode(this.refs.description), this.props.contentTree.description)
       });
     }
   },
@@ -60,10 +52,9 @@ var StartScreen = React.createClass({
       opacity: this.props.skinConfig.startScreen.playIconStyle.opacity
     };
     var posterImageUrl = this.props.skinConfig.startScreen.showPromo ? this.props.contentTree.promo_image : '';
-    var posterStyle = {};
-    if (Utils.isValidString(posterImageUrl)) {
-      posterStyle.backgroundImage = "url('" + posterImageUrl + "')";
-    }
+    var posterStyle = {
+      backgroundImage: "url('" + posterImageUrl + "')"
+    };
 
     //CSS class manipulation from config/skin.json
     var stateScreenPosterClass = ClassNames({
@@ -104,14 +95,12 @@ var StartScreen = React.createClass({
         <Icon {...this.props} icon={iconName} style={actionIconStyle}/>
       </a>
     );
-
     return (
       <div className="oo-state-screen oo-start-screen">
         <div className={stateScreenPosterClass} style={posterStyle}>
           <div className="oo-start-screen-linear-gradient"></div>
           <a className="oo-state-screen-selectable" onClick={this.handleClick}></a>
         </div>
-        <Watermark {...this.props} controlBarVisible={false}/>
         <div className={infoPanelClass}>
           {this.props.skinConfig.startScreen.showTitle ? titleMetadata : null}
           {this.props.skinConfig.startScreen.showDescription ? descriptionMetadata : null}

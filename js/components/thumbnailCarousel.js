@@ -26,40 +26,14 @@ var ThumbnailCarousel = React.createClass({
     thumbnailStylePadding = parseFloat(thumbnailStylePadding); // convert css px to number
     var thumbnailPadding = !isNaN(thumbnailStylePadding) ? thumbnailStylePadding : this.state.thumbnailPadding;
 
-    if (thumbnail && carousel) {
-      if (thumbnail.clientWidth && carousel.clientWidth) {
-        this.setState({
-          thumbnailWidth: thumbnail.clientWidth,
-          thumbnailHeight: thumbnail.clientHeight,
-          centerThumbnailWidth: carousel.clientWidth,
-          centerThumbnailHeight: carousel.clientHeight,
-          thumbnailPadding: thumbnailPadding
-        });
-      } else {
-        var thumbnailStyleWidth = thumbnail ? window.getComputedStyle(thumbnail, null).getPropertyValue("width") : 0;
-        thumbnailStyleWidth = parseFloat(thumbnailStyleWidth); // convert css px to number
-        var thumbnailWidth = !isNaN(thumbnailStyleWidth) ? thumbnailStyleWidth : parseInt(this.props.thumbnailWidth);
-
-        var thumbnailStyleHeight = thumbnail ? window.getComputedStyle(thumbnail, null).getPropertyValue("height") : 0;
-        thumbnailStyleHeight = parseFloat(thumbnailStyleHeight); // convert css px to number
-        var thumbnailHeight = !isNaN(thumbnailStyleHeight) ? thumbnailStyleHeight : parseInt(this.props.thumbnailHeight);
-
-        var carouselStyleWidth = carousel ? window.getComputedStyle(carousel, null).getPropertyValue("width") : 0;
-        carouselStyleWidth = parseFloat(carouselStyleWidth); // convert css px to number
-        var carouselWidth = !isNaN(carouselStyleWidth) ? carouselStyleWidth : parseInt(this.props.carouselWidth);
-
-        var carouselStyleHeight = carousel ? window.getComputedStyle(carousel, null).getPropertyValue("height") : 0;
-        carouselStyleHeight = parseFloat(carouselStyleHeight); // convert css px to number
-        var carouselHeight = !isNaN(carouselStyleHeight) ? carouselStyleHeight : parseInt(this.props.carouselHeight);
-
-        this.setState({
-          thumbnailWidth: thumbnailWidth,
-          thumbnailHeight: thumbnailHeight,
-          centerThumbnailWidth: carouselWidth,
-          centerThumbnailHeight: carouselHeight,
-          thumbnailPadding: thumbnailPadding
-        });
-      }
+    if (thumbnail && carousel && thumbnail.clientWidth && carousel.clientWidth) {
+      this.setState({
+        thumbnailWidth: thumbnail.clientWidth,
+        thumbnailHeight: thumbnail.clientHeight,
+        centerThumbnailWidth: carousel.clientWidth,
+        centerThumbnailHeight: carousel.clientHeight,
+        thumbnailPadding: thumbnailPadding
+      });
     }
   },
 
@@ -69,14 +43,7 @@ var ThumbnailCarousel = React.createClass({
     for (var i = data.pos + 1, j = 0; i < data.timeSlices.length; i++, j++) {
       var left = start + data.padding + j * (data.imgWidth + data.padding);
       if (left + data.imgWidth <= data.scrubberBarWidth) {
-        var thumbStyle = {
-          left: left,
-          top: data.top
-        };
-        var thumbUrl = data.thumbnails.data.thumbnails[data.timeSlices[i]][data.width].url;
-        if (Utils.isValidString(thumbUrl)) {
-          thumbStyle.backgroundImage = "url('" + thumbUrl + "')";
-        }
+        var thumbStyle = { left: left, top: data.top, backgroundImage: "url(" + data.thumbnails.data.thumbnails[data.timeSlices[i]][data.width].url + ")" };
         thumbnailsAfter.push(<div className="oo-thumbnail-carousel-image" key={i} ref="thumbnail" style={thumbStyle}></div>);
       }
     }
@@ -90,14 +57,7 @@ var ThumbnailCarousel = React.createClass({
     for (var i = data.pos - 1, j = 0; i >= 0; i--, j++) {
       var left = start - (j + 1) * (data.imgWidth + data.padding);
       if (left >= 0) {
-        var thumbStyle = {
-          left: left,
-          top: data.top
-        };
-        var thumbUrl = data.thumbnails.data.thumbnails[data.timeSlices[i]][data.width].url;
-        if (Utils.isValidString(thumbUrl)) {
-          thumbStyle.backgroundImage = "url('" + thumbUrl + "')";
-        }
+        var thumbStyle = { left: left, top: data.top, backgroundImage: "url(" + data.thumbnails.data.thumbnails[data.timeSlices[i]][data.width].url + ")" };
         thumbnailsBefore.push(<div className="oo-thumbnail-carousel-image" key={i} ref="thumbnail" style={thumbStyle}></div>);
       }
     }
@@ -120,12 +80,7 @@ var ThumbnailCarousel = React.createClass({
 
     var thumbnailsBefore = this.findThumbnailsBefore(data);
     var thumbnailsAfter = this.findThumbnailsAfter(data);
-    var thumbnailStyle = {
-      left: (data.scrubberBarWidth - data.centerWidth) / 2
-    };
-    if (Utils.isValidString(centralThumbnail.url)) {
-      thumbnailStyle.backgroundImage = "url('" + centralThumbnail.url + "')";
-    }
+    var thumbnailStyle = { left: (data.scrubberBarWidth - data.centerWidth) / 2, backgroundImage: "url(" + centralThumbnail.url + ")" };
     var time = isFinite(parseInt(this.props.hoverTime)) ? Utils.formatSeconds(parseInt(this.props.hoverTime)) : null;
 
     return (

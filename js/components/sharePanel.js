@@ -13,26 +13,11 @@ var React = require('react'),
     CONSTANTS = require('../constants/constants');
 
 var SharePanel = React.createClass({
-  tabs: {SHARE: "social", EMBED: "embed"},
+  tabs: {SHARE: "share", EMBED: "embed"},
 
   getInitialState: function() {
-    var shareContent = Utils.getPropertyValue(this.props.skinConfig, 'shareScreen.shareContent');
-    var socialContent = Utils.getPropertyValue(this.props.skinConfig, 'shareScreen.socialContent', []);
-    var activeTab = shareContent ? shareContent[0] : null;
-
-    // If no social buttons are specified, default to the first tab
-    // that isn't the 'social' tab, since it will be hidden
-    if (shareContent && !socialContent.length) {
-      for (var i = 0; i < shareContent.length; i++) {
-        if (shareContent[i] !== 'social') {
-          activeTab = shareContent[i];
-          break;
-        }
-      }
-    }
-
     return {
-      activeTab: activeTab,
+      activeTab: this.tabs.SHARE,
       hasError: false
     };
   },
@@ -84,6 +69,7 @@ var SharePanel = React.createClass({
     if (this.state.activeTab === this.tabs.SHARE) {
       var titleString = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.SHARE_CALL_TO_ACTION, this.props.localizableStrings);
       var shareUrl = this.getShareLocation();
+
       return (
         <div className="oo-share-tab-panel">
           <div className="oo-social-action-text oo-text-capitalize">{titleString}</div>
@@ -106,9 +92,9 @@ var SharePanel = React.createClass({
           .replace("<PLAYER_ID>", this.props.playerParam.playerBrandingId)
           .replace("<PUBLISHER_ID>", this.props.playerParam.pcode);
 
-        if (this.state.shareAtTime) {
-            iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&view=embed&pcode=');
-        }
+		if (this.state.shareAtTime) {
+			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&view=embed&pcode=');
+		}
 
       } catch(err) {
         iframeURL = "";
@@ -116,7 +102,7 @@ var SharePanel = React.createClass({
 
       return (
         <div className="oo-share-tab-panel">
-          <textarea className="oo-form-control oo-embed-form"
+          <textarea className="oo-form-control"
                     rows="3"
                     value={iframeURL}
                     readOnly />
@@ -127,32 +113,32 @@ var SharePanel = React.createClass({
 
   getShareLocation: function() {
     var shareAtTime = this.state.shareAtTime || false;
-    if (shareAtTime) {
-      var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
-      if ( this.state.userPlayHeadTime ) {
-        playheadTime = parseInt(this.state.userPlayHeadTime);
-      }
+	if (shareAtTime) {
+	  var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+	  if ( this.state.userPlayHeadTime ) {
+	    playheadTime = parseInt(this.state.userPlayHeadTime);
+	  }
       var urlparser = document.createElement('a')
       urlparser.href = window.videoInfo && window.videoInfo.url ? window.videoInfo.url : location.href;
-      var qs= urlparser.search ? urlparser.search.substring(1).split('&')
-        .map(function(x){
-            return x.split('=',2).map(function(i){
-                return decodeURIComponent(i.trim()).replace('+', ' ');
-            })
-        })
-       .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
-      qs['t']=playheadTime;
-      qs['autoplay']='1';
+	  var qs= urlparser.search ? urlparser.search.substring(1).split('&')
+		.map(function(x){
+			return x.split('=',2).map(function(i){
+				return decodeURIComponent(i.trim()).replace('+', ' ');
+			})
+		})
+	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
+	  qs['t']=playheadTime;
+	  qs['autoplay']='1';
       qs['view']='embed';
-      var str=''
-      for(var k in qs) {
-        if (str.length > 0) str += '&';
-        str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
-      }
-      return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
-    } else{ 
-      return location.href;
-    }
+	  var str=''
+	  for(var k in qs) {
+		if (str.length > 0) str += '&';
+		str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
+	  }
+	  return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
+	} else{ 
+	  return location.href;
+	}
   },
 
   handleEmailClick: function(event) {
@@ -206,27 +192,13 @@ var SharePanel = React.createClass({
   },
 
   render: function() {
-    var shareContent = Utils.getPropertyValue(this.props.skinConfig, 'shareScreen.shareContent');
-    var socialContent = Utils.getPropertyValue(this.props.skinConfig, 'shareScreen.socialContent', []);
-    if (!shareContent) return null;
-
-    var showEmbedTab = false;
-    var showShareTab = false;
-
-    for (var i = 0; i < shareContent.length; i++){
-      if (shareContent[i] == this.tabs.EMBED) showEmbedTab = true;
-      if (shareContent[i] == this.tabs.SHARE && socialContent.length) showShareTab = true;
-    }
-
     var shareTab = ClassNames({
       'oo-share-tab': true,
-      'oo-active': this.state.activeTab == this.tabs.SHARE,
-      'oo-hidden': !showShareTab
+      'oo-active': this.state.activeTab == this.tabs.SHARE
     });
     var embedTab = ClassNames({
       'oo-embed-tab': true,
-      'oo-active': this.state.activeTab == this.tabs.EMBED,
-      'oo-hidden': !showEmbedTab
+      'oo-active': this.state.activeTab == this.tabs.EMBED
     });
 
     var shareString = Utils.getLocalizedString(this.props.language, CONSTANTS.SKIN_TEXT.SHARE, this.props.localizableStrings),

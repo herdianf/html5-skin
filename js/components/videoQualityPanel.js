@@ -32,16 +32,15 @@ var VideoQualityPanel = React.createClass({
       'oo-quality-auto-btn': true,
       'oo-selected': this.state.selected == 'auto'
     });
-    var selectedBitrateStyle = {color: (this.props.skinConfig.general.accentColor && this.state.selected == 'auto') ? this.props.skinConfig.general.accentColor : null};
 
     //add auto btn to beginning of array
     bitrateButtons.unshift(
       <li className="oo-auto-li" key='auto-li'>
         <a className={autoQualityBtn} key='auto' onClick={this.handleVideoQualityClick.bind(this, 'auto')}>
-          <div className="oo-quality-auto-icon" style={selectedBitrateStyle}>
-            <Icon {...this.props} icon="auto" />
+          <div className="oo-quality-auto-icon">
+            <Icon {...this.props} icon="auto"/>
           </div>
-          <div className="oo-quality-auto-label" style={selectedBitrateStyle}>Auto</div>
+          <div className="oo-quality-auto-label">Auto</div>
         </a>
       </li>
     );
@@ -49,8 +48,8 @@ var VideoQualityPanel = React.createClass({
 
   render: function() {
     var availableBitrates  = this.props.videoQualityOptions.availableBitrates;
+
     var bitrateButtons = [];
-    var label;
 
     //available bitrates
     for (var i = 0; i < availableBitrates.length; i++) {
@@ -58,19 +57,13 @@ var VideoQualityPanel = React.createClass({
         'oo-quality-btn': true,
         'oo-selected': this.state.selected == availableBitrates[i].id
       });
-      var selectedBitrateStyle = {color: (this.props.skinConfig.general.accentColor && this.state.selected == availableBitrates[i].id) ? this.props.skinConfig.general.accentColor : null};
 
-      if (availableBitrates[i].id == 'auto') {
+      if (availableBitrates[i].id == 'auto'){
         this.addAutoButton(bitrateButtons);
       }
       else {
-        if (typeof availableBitrates[i].bitrate === "number") {
-          label = Math.round(availableBitrates[i].bitrate/1000) + ' kbps';
-        } 
-        else {
-          label = availableBitrates[i].bitrate;
-        }
-        bitrateButtons.push(<li key={i}><a className={qualityBtn} style={selectedBitrateStyle} key={i} onClick={this.handleVideoQualityClick.bind(this, availableBitrates[i].id)}>{label}</a></li>);
+        var label = Math.round(availableBitrates[i].bitrate/1000) + ' kbps';
+        bitrateButtons.push(<li key={i}><a className={qualityBtn} key={i} onClick={this.handleVideoQualityClick.bind(this, availableBitrates[i].id)}>{label}</a></li>);
       }
     }
 
@@ -86,7 +79,7 @@ var VideoQualityPanel = React.createClass({
         <ScrollArea
           className="oo-quality-screen-content"
           speed={this.props.popover ? 0.6 : 1}
-          horizontal={!this.props.popover}>
+          horizontal={this.props.popover ? false : true}>
           <ul>
             {bitrateButtons}
           </ul>
@@ -100,10 +93,7 @@ VideoQualityPanel.propTypes = {
   videoQualityOptions: React.PropTypes.shape({
     availableBitrates: React.PropTypes.arrayOf(React.PropTypes.shape({
       id: React.PropTypes.string,
-      bitrate: React.PropTypes.oneOfType([
-      React.PropTypes.string,
-      React.PropTypes.number,
-      ]),
+      bitrate: React.PropTypes.number,
       label: React.PropTypes.string
     }))
   }),

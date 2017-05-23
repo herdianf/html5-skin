@@ -13,8 +13,7 @@
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-  z-index: $zindex-control-bar;
-  pointer-events: auto;
+  z-index: 12500;
 
   .oo-control-bar-items-wrapper {
     display: -webkit-flex;
@@ -67,7 +66,6 @@
 
     .oo-control-bar-item.oo-selected > span {
       color:$blue-light !important;
-      color: inherit !important;
       opacity:1 !important;
     }
 
@@ -86,8 +84,6 @@
       text-align: left;
       position: relative;
       top:-2px;
-      cursor: auto;
-      @include vendor-prefixes(user-select, text);
 
       .oo-total-time {
         color: $white;

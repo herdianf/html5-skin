@@ -178,15 +178,6 @@
   }
 }
 
-// Firefox only
-@mixin apply-to-firefox-only ($selector) {
-  @-moz-document url-prefix() {
-    #{$selector} {
-      @content;
-    }
-  }
-}
-
 // flexbox prefixing
 @mixin flexbox() {
   display: -webkit-box;

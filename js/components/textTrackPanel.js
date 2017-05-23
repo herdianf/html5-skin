@@ -3,9 +3,7 @@
  *
  * @module TextTrackPanel
  */
-var React = require('react'),
-    Utils = require('./utils');
-
+var React = require('react');
 var baseFontSize = 1.0;
 
 var TextTrackPanel = React.createClass({
@@ -129,8 +127,8 @@ var TextTrackPanel = React.createClass({
                   this.props.closedCaptionOptions.textEnhancement
                 )
               }
-             >
-             <span dangerouslySetInnerHTML={Utils.createMarkup(this.props.cueText)}></span>
+              >
+              {this.props.cueText}
             </div>
           </div>
         </div>
