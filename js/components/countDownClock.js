@@ -190,15 +190,32 @@ var CountDownClock = React.createClass({
 });
 
 CountDownClock.propTypes = {
-  timeToShow: React.PropTypes.string,
+  timeToShow: React.PropTypes.number,
   clockWidth: React.PropTypes.number,
   currentPlayhead: React.PropTypes.number
 };
 
 CountDownClock.defaultProps = {
-  timeToShow: "10", //seconds
+  timeToShow: 10, //seconds
   clockWidth: 36,
-  currentPlayhead: 0
+  currentPlayhead: 0,
+  controller: {
+    state: {
+      screenToShow: '',
+      upNextInfo: {
+        timeToShow: 10
+      }
+    }
+  },
+  skinConfig: {
+    responsive: {
+      breakpoints: {
+        xs: {
+          id: 'xs'
+        }
+      }
+    }
+  },
 };
 
 module.exports = CountDownClock;

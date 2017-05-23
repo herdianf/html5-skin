@@ -13,6 +13,7 @@ var ScrubberBar = React.createClass({
 
   getInitialState: function() {
     this.lastScrubX = null;
+    this.isMobile = this.props.controller.state.isMobile;
     this.touchInitiated = false;
 
     return {
@@ -36,7 +37,7 @@ var ScrubberBar = React.createClass({
   },
 
   componentWillReceiveProps: function(nextProps) {
-    if (this.transitionedDuringSeek && !nextProps.seeking) {
+    if (this.state.transitionedDuringSeek && !nextProps.seeking) {
       this.setState({transitionedDuringSeek: false});
     }
   },
@@ -195,15 +196,16 @@ var ScrubberBar = React.createClass({
       backgroundColor: this.props.skinConfig.controlBar.scrubberBar.backgroundColor
     };
     var bufferedIndicatorStyle = {
-      width: (parseFloat(this.props.buffered) / parseFloat(this.props.duration)) * 100 + "%",
+      width: Math.min((parseFloat(this.props.buffered) / parseFloat(this.props.duration)) * 100, 100) + "%",
       backgroundColor: this.props.skinConfig.controlBar.scrubberBar.bufferedColor
     };
     var playedIndicatorStyle = {
       width: Math.min((parseFloat(this.props.currentPlayhead) / parseFloat(this.props.duration)) * 100, 100) + "%",
-      backgroundColor: this.props.skinConfig.controlBar.scrubberBar.playedColor
+      backgroundColor: this.props.skinConfig.controlBar.scrubberBar.playedColor ? this.props.skinConfig.controlBar.scrubberBar.playedColor : this.props.skinConfig.general.accentColor
     };
-
-    var playheadStyle = {};
+    var playheadStyle = {
+      backgroundColor: this.props.skinConfig.controlBar.scrubberBar.playedColor ? this.props.skinConfig.controlBar.scrubberBar.playedColor : this.props.skinConfig.general.accentColor
+    };
     var playheadPaddingStyle = {};
 
     if (!this.state.transitionedDuringSeek) {
@@ -256,7 +258,6 @@ var ScrubberBar = React.createClass({
         thumbnailCarousel =
           <ThumbnailCarousel
            thumbnails={this.props.controller.state.thumbnails}
-           hoverPosition={hoverPosition}
            duration={this.props.duration}
            hoverTime={hoverTime > 0 ? hoverTime : 0}
            scrubberBarWidth={this.state.scrubberBarWidth}/>
@@ -269,7 +270,7 @@ var ScrubberBar = React.createClass({
         hoverTime = (this.state.hoveringX / this.state.scrubberBarWidth) * this.props.duration;
         hoveredIndicatorStyle = {
           width: Math.min((parseFloat(hoverTime) / parseFloat(this.props.duration)) * 100, 100) + "%",
-          backgroundColor: this.props.skinConfig.controlBar.scrubberBar.playedColor
+          backgroundColor: this.props.skinConfig.controlBar.scrubberBar.playedColor ? this.props.skinConfig.controlBar.scrubberBar.playedColor : this.props.skinConfig.general.accentColor
         };
         scrubberBarClassName += " oo-scrubber-bar-hover";
         playheadClassName += " oo-playhead-hovering";

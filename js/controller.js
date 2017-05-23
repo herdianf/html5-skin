@@ -6,8 +6,12 @@ var React = require('react'),
     Utils = require('./components/utils'),
     CONSTANTS = require('./constants/constants'),
     AccessibilityControls = require('./components/accessibilityControls'),
+    DeepMerge = require('deepmerge'),
     Fullscreen = require('screenfull'),
-    Skin = require('./skin');
+    Skin = require('./skin'),
+    SkinJSON = require('../config/skin'),
+    Bulk = require('bulk-require'),
+    Localization = Bulk('./config', ['languageFiles/*.json']);
 
 OO.plugin("Html5Skin", function (OO, _, $, W) {
   //Check if the player is at least v4. If not, the skin cannot load.
@@ -26,6 +30,8 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     this.id = id;
     this.state = {
       "playerParam": {},
+      "skinMetaData": {},
+      "attributes": {},
       "persistentSettings": {
         "closedCaptionOptions": {}
       },
@@ -36,14 +42,18 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       "screenToShow": null,
       "playerState": null,
       "discoveryData": null,
+      "forceCountDownTimerOnEndScreen": false,
       "isPlayingAd": false,
       "adOverlayUrl": null,
       "showAdOverlay": false,
       "showAdOverlayCloseButton": false,
       "showAdControls": true,
       "showAdMarquee": true,
+      "isOoyalaAds": false,
+      "afterOoyalaAd": false,
       "configLoaded": false,
       "config": {},
+      "customSkinJSON": {},
       "fullscreen": false,
       "pauseAnimationDisabled": false,
       "adPauseAnimationDisabled": true,
@@ -59,11 +69,14 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       "mainVideoContainer": null,
       "mainVideoInnerWrapper": null,
       "mainVideoElement": null,
+      "mainVideoMediaType": null,
       "mainVideoAspectRatio": 0,
       "pluginsElement": null,
       "pluginsClickElement": null,
       "buffering": false,
-      "mainVideoPlayhead": null,
+      "mainVideoBuffered": null,
+      "mainVideoPlayhead": 0,
+      "adVideoPlayhead": 0,
       "focusedElement": null,
 
       "currentAdsInfo": {
@@ -72,6 +85,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         "skipAdButtonEnabled": false
       },
 
+      "closedCaptionsInfoCache": {},
       "closedCaptionOptions": {
         "enabled": null,
         "language": null,
@@ -125,8 +139,9 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       "isInitialPlay": false,
       "isFullScreenSupported": false,
       "isVideoFullScreenSupported": false,
-      "isFullWindow": false,
-	  "isPlaying": false
+      "isFullWindow": false,      
+      "isPlaying": false,
+      "autoPauseDisabled": false
     };
 
     this.init();
@@ -139,10 +154,14 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.mb.subscribe(OO.EVENTS.VC_VIDEO_ELEMENT_CREATED, 'customerUi', _.bind(this.onVcVideoElementCreated, this));
       this.mb.subscribe(OO.EVENTS.DESTROY, 'customerUi', _.bind(this.onPlayerDestroy, this));
       this.mb.subscribe(OO.EVENTS.EMBED_CODE_CHANGED, 'customerUi', _.bind(this.onEmbedCodeChanged, this));
+      this.mb.subscribe(OO.EVENTS.EMBED_CODE_CHANGED_AFTER_OOYALA_AD, 'customerUi', _.bind(this.onEmbedCodeChangedAfterOoyalaAd, this));
       this.mb.subscribe(OO.EVENTS.CONTENT_TREE_FETCHED, 'customerUi', _.bind(this.onContentTreeFetched, this));
       this.mb.subscribe(OO.EVENTS.THUMBNAILS_FETCHED, 'customerUi', _.bind(this.onThumbnailsFetched, this));//xenia: to be replaced by a more appropriate event
       this.mb.subscribe(OO.EVENTS.AUTHORIZATION_FETCHED, 'customerUi', _.bind(this.onAuthorizationFetched, this));
+      this.mb.subscribe(OO.EVENTS.SKIN_METADATA_FETCHED, 'customerUi', _.bind(this.onSkinMetaDataFetched, this));
+      this.mb.subscribe(OO.EVENTS.ATTRIBUTES_FETCHED, 'customerUi', _.bind(this.onAttributesFetched, this));
       this.mb.subscribe(OO.EVENTS.ASSET_CHANGED, 'customerUi', _.bind(this.onAssetChanged, this));
+      this.mb.subscribe(OO.EVENTS.ASSET_UPDATED, 'customerUi', _.bind(this.onAssetUpdated, this));
       this.mb.subscribe(OO.EVENTS.PLAYBACK_READY, 'customerUi', _.bind(this.onPlaybackReady, this));
       this.mb.subscribe(OO.EVENTS.ERROR, "customerUi", _.bind(this.onErrorEvent, this));
       this.mb.addDependent(OO.EVENTS.PLAYBACK_READY, OO.EVENTS.UI_READY);
@@ -165,6 +184,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         this.mb.subscribe(OO.EVENTS.CLOSED_CAPTIONS_INFO_AVAILABLE, "customerUi", _.bind(this.onClosedCaptionsInfoAvailable, this));
         this.mb.subscribe(OO.EVENTS.BITRATE_INFO_AVAILABLE, "customerUi", _.bind(this.onBitrateInfoAvailable, this));
         this.mb.subscribe(OO.EVENTS.CLOSED_CAPTION_CUE_CHANGED, "customerUi", _.bind(this.onClosedCaptionCueChanged, this));
+        this.mb.subscribe(OO.EVENTS.CHANGE_CLOSED_CAPTION_LANGUAGE, 'customerUi', _.bind(this.onChangeClosedCaptionLanguage, this));
         this.mb.subscribe(OO.EVENTS.VOLUME_CHANGED, "customerUi", _.bind(this.onVolumeChanged, this));
         this.mb.subscribe(OO.EVENTS.VC_VIDEO_ELEMENT_IN_FOCUS, "customerUi", _.bind(this.onVideoElementFocus, this));
         this.mb.subscribe(OO.EVENTS.REPLAY, "customerUi", _.bind(this.onReplay, this));
@@ -206,10 +226,14 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
      event listeners from core player -> regulate skin STATE
      ---------------------------------------------------------------------*/
     onPlayerCreated: function (event, elementId, params, settings) {
+      //subscribe to plugin events
+      this.externalPluginSubscription();
+
       //set state variables
       this.state.mainVideoContainer = $("#" + elementId);
       this.state.mainVideoInnerWrapper = $("#" + elementId + " .innerWrapper");
       this.state.playerParam = params;
+      this.state.persistentSettings = settings;
       this.state.elementId = elementId;
       this.state.isMobile = Utils.isMobile();
       this.state.browserSupportsTouch = Utils.browserSupportsTouch();
@@ -219,98 +243,35 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.state.mainVideoInnerWrapper.addClass('oo-player');
       this.state.mainVideoInnerWrapper.append("<div class='oo-player-skin'></div>");
 
-      var tmpLocalizableStrings = {};
+      //load player with page level config param if exist
+      if (params.skin && params.skin.config) {
+        $.getJSON(params.skin.config, function(data) {
+          this.state.customSkinJSON = data;
+          this.loadConfigData(this.state.playerParam, this.state.persistentSettings, data, this.state.skinMetaData);
+        }.bind(this));
+      } else {
+        this.loadConfigData(this.state.playerParam, this.state.persistentSettings, this.state.customSkinJSON, this.state.skinMetaData);
+      }
 
-      // Would be a good idea to also (or only) wait for skin metadata to load. Load metadata here
-      $.getJSON(params.skin.config, _.bind(function(data) {
-        //override data in skin config with possible inline data input by the user
-        $.extend(true, data, params.skin.inline);
-        //override state settings with defaults from skin config and possible local storage settings
-        $.extend(true, this.state.closedCaptionOptions, data.closedCaptionOptions, settings.closedCaptionOptions);
-
-        //load language jsons
-        data.localization.availableLanguageFile.forEach(function(languageObj){
-          $.getJSON(languageObj.languageFile, _.bind(function(data) {
-            tmpLocalizableStrings[languageObj.language] = data;
-            this.renderSkin();
-          }, this));
-        }, this);
-
-        this.state.config = data;
-
-        this.skin = ReactDOM.render(
-          React.createElement(Skin, {skinConfig: data, localizableStrings: tmpLocalizableStrings, language: Utils.getLanguageToUse(data), controller: this, closedCaptionOptions: this.state.closedCaptionOptions, pauseAnimationDisabled: this.state.pauseAnimationDisabled}), document.querySelector("#" + this.state.elementId + " .oo-player-skin")
-        );
-        var accessibilityControls = new AccessibilityControls(this); //keyboard support
-        this.state.configLoaded = true;
-        this.renderSkin();
-
-        var fullClass = (this.state.config.adScreen.showControlBar ? "" : " oo-full");
-        $("#" + this.state.elementId + " .oo-player-skin").append("<div class='oo-player-skin-plugins"+fullClass+"'></div><div class='oo-player-skin-plugins-click-layer"+fullClass+"'></div>");
-        this.state.pluginsElement = $("#" + this.state.elementId + " .oo-player-skin-plugins");
-        this.state.pluginsClickElement = $("#" + this.state.elementId + " .oo-player-skin-plugins-click-layer");
-        this.state.pluginsElement.mouseover(
-          function() {
-            this.showControlBar();
-            this.renderSkin();
-            this.startHideControlBarTimer();
-          }.bind(this)
-        );
-        this.state.pluginsElement.mouseout(
-          function() {
-            this.hideControlBar();
-          }.bind(this)
-        );
-        this.state.pluginsClickElement.click(
-          function() {
-            this.state.pluginsClickElement.removeClass("oo-showing");
-            this.mb.publish(OO.EVENTS.PLAY);
-          }.bind(this)
-        );
-        this.state.pluginsClickElement.mouseover(
-          function() {
-            this.showControlBar();
-            this.renderSkin();
-            this.startHideControlBarTimer();
-          }.bind(this)
-        );
-        this.state.pluginsClickElement.mouseout(
-          function() {
-            this.hideControlBar();
-          }.bind(this)
-        );
-        this.mb.publish(OO.EVENTS.UI_READY, {
-          videoWrapperClass: "innerWrapper",
-          pluginsClass: "oo-player-skin-plugins"
-        });
-      }, this));
-
-      this.state.isMobile = Utils.isMobile();
-
-      this.externalPluginSubscription();
+      this.accessibilityControls = new AccessibilityControls(this); //keyboard support
       this.state.screenToShow = CONSTANTS.SCREEN.LOADING_SCREEN;
     },
 
-    onVcVideoElementCreated: function(eventname, params) {
-      var element = $("#" + params["domId"]);
-      var elementVideo = element.find("video");
-
-      //if video element is descendant
-      if (elementVideo.length) {
-        element = elementVideo;
-      }
+    onVcVideoElementCreated: function(event, params) {
+      var videoElement = params.videoElement;
+      videoElement = this.findMainVideoElement(videoElement);
 
       //add loadedmetadata event listener to main video element
-      if (element.get(0)) {
-        element.get(0).addEventListener("loadedmetadata", this.metaDataLoaded.bind(this));
+      if (videoElement) {
+        videoElement.addEventListener("loadedmetadata", this.metaDataLoaded.bind(this));
       }
 
       if (Utils.isIE10()) {
-        element.attr("controls", "controls");
+        videoElement.attr("controls", "controls");
       }
 
-      if (params["videoId"] === OO.VIDEO.MAIN) {
-        this.state.mainVideoElement = element;
+      if (params.videoId === OO.VIDEO.MAIN) {
+        this.state.mainVideoElement = videoElement;
         this.enableFullScreen();
         this.updateAspectRatio();
       }
@@ -325,20 +286,46 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       var elementId = this.state.elementId;
       var mountNode = document.querySelector('#' + elementId + ' .oo-player-skin');
       // remove mounted Skin component
-      ReactDOM.unmountComponentAtNode(mountNode);
+      if (mountNode) {
+        ReactDOM.unmountComponentAtNode(mountNode);
+      }
+      this.cleanUpEventListeners()
       this.mb = null;
+    },
+    
+    cleanUpEventListeners : function() {
+      this.accessibilityControls.cleanUp()
+    },
+
+    onEmbedCodeChangedAfterOoyalaAd: function(event, embedCode, options) {
+      if (options) {
+        this.state.playerParam = DeepMerge(this.state.playerParam, options);
+      }
+      this.state.isOoyalaAds = false;
+      this.state.afterOoyalaAd = true;
     },
 
     onEmbedCodeChanged: function(event, embedCode, options) {
       this.state.videoQualityOptions.availableBitrates = null;
       this.state.videoQualityOptions.selectedBitrate = null;
       this.state.closedCaptionOptions.availableLanguages = null;
+      this.state.closedCaptionOptions.cueText = null;
+      this.state.closedCaptionsInfoCache = {};
       this.state.discoveryData = null;
       this.state.thumbnails = null;
+      this.state.afterOoyalaAd = false;
       this.resetUpNextInfo(true);
 
+      if (options && options.ooyalaAds === true) {
+        this.state.isOoyalaAds = true;
+      } else {
+        this.state.isOoyalaAds = false;
+      }
+
       this.state.assetId = embedCode;
-      $.extend(true, this.state.playerParam, options);
+      if (options) {
+        this.state.playerParam = DeepMerge(this.state.playerParam, options);
+      }
       this.subscribeBasicPlaybackEvents();
     },
 
@@ -352,6 +339,20 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.renderSkin({"contentTree": contentTree});
     },
 
+    onSkinMetaDataFetched: function (event, skinMetaData) {
+      this.state.skinMetaData = skinMetaData;
+      this.loadConfigData(this.state.playerParam, this.state.persistentSettings, this.state.customSkinJSON, this.state.skinMetaData);
+    },
+
+    onAttributesFetched: function (event, attributes) {
+      this.state.attributes = attributes;
+      //anamorphic videos
+      var isAnamorphic = Utils.getPropertyValue(this.state.attributes, 'provider.ots_stretch_to_output');
+      if (isAnamorphic == true || isAnamorphic == "true") {
+        this.state.mainVideoInnerWrapper.addClass('oo-anamorphic');
+      }
+    },
+
     onThumbnailsFetched: function (event, thumbnails) {
       this.state.thumbnails = thumbnails;
     },
@@ -359,10 +360,12 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     onAssetChanged: function (event, asset) {
       this.state.videoQualityOptions.availableBitrates = null;
       this.state.closedCaptionOptions.availableLanguages = null;
+      this.state.closedCaptionsInfoCache = {};
       this.state.discoveryData = null;
       this.subscribeBasicPlaybackEvents();
 
       this.resetUpNextInfo(true);
+      this.state.isOoyalaAds = false;
 
       this.state.isLiveStream = asset.content.streams[0].is_live_stream;
 
@@ -377,8 +380,28 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.renderSkin({"contentTree": contentTree});
     },
 
-    onVolumeChanged: function (event, newVolume){
-      this.state.volumeState.volume = newVolume;
+    onAssetUpdated: function (event, asset) {
+      this.resetUpNextInfo(true);
+
+      this.state.isLiveStream = asset.content.streams[0].is_live_stream;
+
+      this.state.contentTree.title = asset.content.title;
+      this.state.contentTree.description = asset.content.description;
+      this.state.contentTree.duration = asset.content.duration;
+      this.state.contentTree.promo_image = asset.content.posterImages[0].url;
+
+      this.renderSkin({"contentTree": this.state.contentTree});
+    },
+
+    onVolumeChanged: function (event, newVolume) {
+      if (newVolume <= 0) {
+        this.state.volumeState.muted = true;
+        this.state.volumeState.volume = 0;
+      } else {
+        this.state.volumeState.muted = false;
+        this.state.volumeState.volume = newVolume;
+      }
+      this.renderSkin();
     },
 
     resetUpNextInfo: function (purge) {
@@ -390,22 +413,37 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     onPlayheadTimeChanged: function(event, currentPlayhead, duration, buffered, startEnd, videoId) {
-      if (videoId == "main") {
+      if (videoId == OO.VIDEO.MAIN) {
         this.state.mainVideoPlayhead = currentPlayhead;
+        this.state.mainVideoDuration = duration;
+        this.state.mainVideoBuffered = buffered;
       }
       else if (videoId == OO.VIDEO.ADS) {
         //adVideoDuration is only used in adPanel ad marquee
         this.state.adVideoDuration = duration;
+        this.state.adVideoPlayhead = currentPlayhead;
       }
+      this.state.duration = duration;
+      
       if (!this.state.seeking) {
-        this.skin.updatePlayhead(currentPlayhead, duration, buffered);
+        this.skin.updatePlayhead(currentPlayhead, duration, buffered, this.state.adVideoPlayhead);
       } else {
         this.state.queuedPlayheadUpdate = [currentPlayhead, duration, buffered];
       }
-      
+
+      // lower skin z-index if Chrome auto-pauses flash content
+      if(!this.state.autoPauseDisabled && Utils.isChrome() && this.state.mainVideoMediaType == CONSTANTS.MEDIA_TYPE.FLASH) {
+        var skinElement = $("#"+this.state.elementId+" .oo-player-skin");
+        if(currentPlayhead == 0 && this.state.playerState == CONSTANTS.STATE.PLAYING) {
+          skinElement.addClass('oo-z-index-auto');
+        } else {
+          skinElement.removeClass('oo-z-index-auto');
+          this.state.autoPauseDisabled = true;
+        }
+      }
+
       // The code inside if statement is only for up next, however, up next does not apply to Ad screen.
       // So we only need to update the playhead for ad screen.
-      this.state.duration = duration;
       if (this.state.screenToShow !== CONSTANTS.SCREEN.AD_SCREEN ) {
         if (this.skin.props.skinConfig.upNext.showUpNext) {
           if (!(Utils.isIPhone() || (Utils.isIos() && this.state.fullscreen))){//no UpNext for iPhone or fullscreen iPad
@@ -420,23 +458,26 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     showUpNextScreenWhenReady: function(currentPlayhead, duration) {
-      var timeToShow = 0;
-      var stringTimeToShow = this.skin.props.skinConfig.upNext.timeToShow;
+      var timeToShow = this.skin.props.skinConfig.upNext.timeToShow;
 
-      if (stringTimeToShow.indexOf('%') === -1){
-        // time to show is based on seconds from the end
-        timeToShow = parseInt(stringTimeToShow);
-      } else {
+      if (timeToShow < 1){
         // time to show is based on percentage of duration from the beginning
-        timeToShow = (1 - parseInt(stringTimeToShow)/100) * duration;
+        timeToShow = (1 - timeToShow) * duration;
       }
+
       this.state.upNextInfo.timeToShow = timeToShow;
 
-      if (duration !==0 &&
+      if ((this.state.mainVideoPlayhead != 0 && currentPlayhead != 0) && duration !==0 &&
         duration - currentPlayhead <= timeToShow &&
         !this.state.upNextInfo.countDownCancelled &&
         this.state.isPlayingAd !== true &&
         this.state.upNextInfo.upNextData !== null && (this.state.playerState === CONSTANTS.STATE.PLAYING || this.state.playerState === CONSTANTS.STATE.PAUSE)) {
+        // Trigger discovery event only the first time we
+        // switch from hidden to showing
+        if (!this.state.upNextInfo.showing) {
+          var upNextEmbedCode = Utils.getPropertyValue(this.state.upNextInfo, "upNextData.embed_code");
+          this.sendDiscoveryDisplayEvent("endScreen", upNextEmbedCode);
+        }
         this.state.upNextInfo.showing = true;
       }
       else {
@@ -446,15 +487,20 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
 
     onInitialPlay: function() {
       this.state.isInitialPlay = true;
+      this.startHideControlBarTimer();
     },
 
     onPlaying: function(event, source) {
       if (source == OO.VIDEO.MAIN) {
+        //set mainVideoElement if not set during video plugin initialization
+        if (!this.state.mainVideoMediaType) {
+          this.state.mainVideoElement = this.findMainVideoElement(this.state.mainVideoElement);
+        }
         this.state.pauseAnimationDisabled = false;
         this.state.screenToShow = CONSTANTS.SCREEN.PLAYING_SCREEN;
         this.state.playerState = CONSTANTS.STATE.PLAYING;
         this.setClosedCaptionsLanguage();
-        this.state.mainVideoElement.removeClass('oo-blur');
+        this.state.mainVideoElement.classList.remove('oo-blur');
         this.state.isInitialPlay = false;
         this.renderSkin();
       }
@@ -483,7 +529,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       }
     },
 
-    onPaused: function(eventname, videoId) {
+    onPaused: function(event, videoId) {
       if (videoId != this.focusedElement || this.state.screenToShow == CONSTANTS.SCREEN.END_SCREEN) { return; }
       if (videoId == OO.VIDEO.MAIN && this.state.screenToShow != CONSTANTS.SCREEN.AD_SCREEN && this.state.screenToShow != CONSTANTS.SCREEN.LOADING_SCREEN) {
         if (this.state.duration - this.state.mainVideoPlayhead < 0.01) { //when video ends, we get paused event before played event
@@ -505,7 +551,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
           this.state.screenToShow = CONSTANTS.SCREEN.PAUSE_SCREEN;
         }
         this.state.playerState = CONSTANTS.STATE.PAUSE;
-        this.state.mainVideoElement.addClass('oo-blur');
+        this.state.mainVideoElement.classList.add('oo-blur');
         this.renderSkin();
       }
       else if (videoId == OO.VIDEO.ADS){
@@ -536,6 +582,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         }
 
         this.mb.publish(OO.EVENTS.DISCOVERY_API.SEND_CLICK_EVENT, delayedContentData);
+        this.state.upNextInfo.showing = false;
         this.state.upNextInfo.delayedSetEmbedCodeEvent = false;
         this.state.upNextInfo.delayedContentData = null;
       }
@@ -585,7 +632,12 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     onPlaybackReady: function(event) {
-      this.state.screenToShow = CONSTANTS.SCREEN.START_SCREEN;
+      if (this.state.afterOoyalaAd) {
+        this.state.screenToShow = CONSTANTS.SCREEN.LOADING_SCREEN;
+      } else {
+        this.state.screenToShow = CONSTANTS.SCREEN.START_SCREEN;
+      }
+
       this.renderSkin({"contentTree": this.state.contentTree});
     },
 
@@ -623,7 +675,8 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     onAdsPlayed: function(event) {
       OO.log("onAdsPlayed is called from event = " + event);
       this.state.screenToShow = CONSTANTS.SCREEN.PLAYING_SCREEN;
-      this.skin.updatePlayhead(this.skin.state.currentPlayhead, this.state.mainVideoDuration, this.skin.state.buffered);
+      this.skin.updatePlayhead(this.state.mainVideoPlayhead, this.state.mainVideoDuration, this.state.mainVideoBuffered);
+      this.state.duration = this.state.contentTree.duration / 1000;
       this.state.isPlayingAd = false;
       this.state.pluginsElement.removeClass("oo-showing");
       this.state.pluginsClickElement.removeClass("oo-showing");
@@ -642,7 +695,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     onAdPodStarted: function(event, numberOfAds) {
-      OO.log("onAdPodStarted is called from event = " + event + "with " + numberOfAds + "ads");
+      OO.log("onAdPodStarted is called from event = " + event + " with " + numberOfAds + " ads");
       this.state.currentAdsInfo.numberOfAds = numberOfAds;
       this.renderSkin();
     },
@@ -661,7 +714,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
           this.state.adStartTime = 0;
         }
         this.skin.state.currentPlayhead = 0;
-        this.state.mainVideoElement.removeClass('oo-blur');
+        this.state.mainVideoElement.classList.remove('oo-blur');
         this.renderSkin();
       }
     },
@@ -698,6 +751,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     onSkipAdClicked: function(event) {
       this.state.isSkipAdClicked = true;
       OO.log("onSkipAdClicked is called");
+      this.skin.updatePlayhead(this.state.mainVideoPlayhead, this.state.mainVideoDuration, this.state.mainVideoBuffered);
       this.state.currentAdsInfo.skipAdButtonEnabled = false;
       this.mb.publish(OO.EVENTS.SKIP_AD);
       this.renderSkin();
@@ -746,6 +800,9 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
 
     onVideoElementFocus: function(event, source) {
       this.focusedElement = source;
+      // Make sure that the skin uses the captions that correspond
+      // to the newly focused video element
+      this.setClosedCaptionsInfo(source);
       if (source == OO.VIDEO.MAIN) {
         this.state.pluginsElement.removeClass("oo-showing");
         this.state.pluginsClickElement.removeClass("oo-showing");
@@ -786,6 +843,100 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.renderSkin();
     },
 
+    /********************************************************************
+     MAIN VIDEO RELATED EVENTS
+     *********************************************************************/
+
+    //merge and load config data
+    loadConfigData: function(params, settings, data, skinMetaData) {
+      var localSettings = Utils.sanitizeConfigData(settings);
+      var inlinePageParams = Utils.sanitizeConfigData(Utils.getPropertyValue(params, 'skin.inline'));
+      var customSkinJSON = Utils.sanitizeConfigData(data);
+      var metaDataSettings = Utils.sanitizeConfigData(skinMetaData);
+      var buttonArrayFusion = params.buttonMerge ? params.buttonMerge : 'replace';
+
+      //override data in skin config with possible local storage settings, inline data input by user, and CMS settings in backlot/themebuilder
+      var mergedMetaData = DeepMerge(SkinJSON, metaDataSettings, {arrayMerge: Utils.arrayDeepMerge.bind(Utils), arrayUnionBy:'name'});
+      this.state.config = DeepMerge.all([mergedMetaData, customSkinJSON, inlinePageParams, localSettings], {arrayMerge: Utils.arrayDeepMerge.bind(Utils), arrayUnionBy:'name', buttonArrayFusion:buttonArrayFusion});
+      this.state.closedCaptionOptions = this.state.config.closedCaptionOptions;
+
+      //remove 'url' from the list until the tab is worked on
+      var shareContent = Utils.getPropertyValue(this.state.config, 'shareScreen.shareContent');
+      if (shareContent) {
+        for (var i = 0; i < shareContent.length; i++) {
+          if (shareContent[i] == 'url') {
+            shareContent.splice(i, 1);
+          }
+        }
+        this.state.config.shareScreen.shareContent = shareContent;
+      }
+
+      //load config language json if exist
+      if (this.state.config.localization.availableLanguageFile) {
+        this.state.config.localization.availableLanguageFile.forEach(function(languageObj){
+          if (languageObj.languageFile) {
+            $.getJSON(languageObj.languageFile, function(data) {
+              Localization.languageFiles[languageObj.language] = data;
+            });
+          }
+        });
+      }
+
+      //backwards compatibility with string parameters in skin.json
+      this.state.config.upNext.timeToShow = Utils.convertStringToNumber(this.state.config.upNext.timeToShow);
+      this.state.config.discoveryScreen.countDownTime = Utils.convertStringToNumber(this.state.config.discoveryScreen.countDownTime);
+
+      //load player
+      this.skin = ReactDOM.render(
+        React.createElement(Skin, {skinConfig: this.state.config, localizableStrings: Localization.languageFiles, language: Utils.getLanguageToUse(this.state.config), controller: this, closedCaptionOptions: this.state.closedCaptionOptions, pauseAnimationDisabled: this.state.pauseAnimationDisabled}), document.querySelector("#" + this.state.elementId + " .oo-player-skin")
+      );
+      this.state.configLoaded = true;
+      this.renderSkin();
+      this.createPluginElements();
+    },
+
+    //create plugin container elements
+    createPluginElements: function() {
+      var fullClass = (this.state.config.adScreen.showControlBar ? "" : " oo-full");
+      $("#" + this.state.elementId + " .oo-player-skin").append("<div class='oo-player-skin-plugins"+fullClass+"'></div><div class='oo-player-skin-plugins-click-layer"+fullClass+"'></div>");
+      this.state.pluginsElement = $("#" + this.state.elementId + " .oo-player-skin-plugins");
+      this.state.pluginsClickElement = $("#" + this.state.elementId + " .oo-player-skin-plugins-click-layer");
+      this.state.pluginsElement.mouseover(
+        function() {
+          this.showControlBar();
+          this.renderSkin();
+          this.startHideControlBarTimer();
+        }.bind(this)
+      );
+      this.state.pluginsElement.mouseout(
+        function() {
+          this.hideControlBar();
+        }.bind(this)
+      );
+      this.state.pluginsClickElement.click(
+        function() {
+          this.state.pluginsClickElement.removeClass("oo-showing");
+          this.mb.publish(OO.EVENTS.PLAY);
+        }.bind(this)
+      );
+      this.state.pluginsClickElement.mouseover(
+        function() {
+          this.showControlBar();
+          this.renderSkin();
+          this.startHideControlBarTimer();
+        }.bind(this)
+      );
+      this.state.pluginsClickElement.mouseout(
+        function() {
+          this.hideControlBar();
+        }.bind(this)
+      );
+      this.mb.publish(OO.EVENTS.UI_READY, {
+        videoWrapperClass: "innerWrapper",
+        pluginsClass: "oo-player-skin-plugins"
+      });
+    },
+
     onBitrateInfoAvailable: function(event, bitrates) {
       if (bitrates && bitrates.bitrates) {
         this.state.videoQualityOptions.availableBitrates = bitrates.bitrates;
@@ -798,11 +949,14 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       }
     },
 
-    onClosedCaptionsInfoAvailable: function(event, languages) {
-      this.state.closedCaptionOptions.availableLanguages = languages;
-      if (this.state.closedCaptionOptions.enabled){
-        this.setClosedCaptionsLanguage();
+    onClosedCaptionsInfoAvailable: function(event, info) {
+      if (!info || !info.videoId || !info.languages) {
+        return;
       }
+      // Store info in cache in order to be able to restore it
+      // if this video element looses and then regains focus (like when an ad plays)
+      this.state.closedCaptionsInfoCache[info.videoId] = info;
+      this.setClosedCaptionsInfo(info.videoId);
     },
 
     onClosedCaptionCueChanged: function(event, data) {
@@ -835,10 +989,10 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     // https://developer.apple.com/library/safari/documentation/AudioVideo/Conceptual/Using_HTML5_Audio_Video/ControllingMediaWithJavaScript/ControllingMediaWithJavaScript.html#//apple_ref/doc/uid/TP40009523-CH3-SW13
     enableIosFullScreen: function() {
       if(!this.state.isFullScreenSupported) {
-        if (this.state.mainVideoElement.get(0).webkitSupportsFullscreen) {
+        if (this.state.mainVideoElement.webkitSupportsFullscreen) {
           this.state.isVideoFullScreenSupported = true;
-          this.state.mainVideoElement.get(0).addEventListener("webkitbeginfullscreen", this.webkitBeginFullscreen.bind(this));
-          this.state.mainVideoElement.get(0).addEventListener("webkitendfullscreen", this.webkitEndFullscreen.bind(this));
+          this.state.mainVideoElement.addEventListener("webkitbeginfullscreen", this.webkitBeginFullscreen.bind(this));
+          this.state.mainVideoElement.addEventListener("webkitendfullscreen", this.webkitEndFullscreen.bind(this));
         }
       }
     },
@@ -863,9 +1017,9 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       // partial support, video element only (iOS)
       else if (this.state.isVideoFullScreenSupported) {
         if(this.state.fullscreen) {
-          this.state.mainVideoElement.get(0).webkitExitFullscreen();
+          this.state.mainVideoElement.webkitExitFullscreen();
         } else {
-          this.state.mainVideoElement.get(0).webkitEnterFullscreen();
+          this.state.mainVideoElement.webkitEnterFullscreen();
         }
       }
       // no support
@@ -913,6 +1067,19 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     // iOS event fires when a video exits full-screen mode
     webkitEndFullscreen: function() {
       this.state.fullscreen = false;
+      var showUpNext = this.skin.props.skinConfig.upNext.showUpNext || this.skin.props.skinConfig.discoveryScreen.showCountDownTimerOnEndScreen;
+
+      // [PLAYER-212]
+      // We can't show UI such as the "Up Next" countdown on fullscreen iOS. If a countdown
+      // is configured, we wait until the user exits fullscreen and then we display it.
+      if (showUpNext && this.state.playerState === CONSTANTS.STATE.END) {
+        this.state.forceCountDownTimerOnEndScreen = true;
+        this.sendDiscoveryDisplayEvent("endScreen");
+        this.state.pluginsElement.addClass("oo-overlay-blur");
+        this.state.screenToShow = CONSTANTS.SCREEN.DISCOVERY_SCREEN;
+        this.renderSkin();
+        this.state.forceCountDownTimerOnEndScreen = false;
+      }
     },
 
     // exit full window on ESC key
@@ -939,10 +1106,14 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       // player events
       this.mb.unsubscribe(OO.EVENTS.PLAYER_CREATED, 'customerUi');
       this.mb.unsubscribe(OO.EVENTS.CONTENT_TREE_FETCHED, 'customerUi');
+      this.mb.unsubscribe(OO.EVENTS.SKIN_METADATA_FETCHED, 'customerUi');
+      this.mb.unsubscribe(OO.EVENTS.ATTRIBUTES_FETCHED, 'customerUi');
       this.mb.unsubscribe(OO.EVENTS.AUTHORIZATION_FETCHED, 'customerUi');
       this.mb.unsubscribe(OO.EVENTS.ASSET_CHANGED, 'customerUi');
+      this.mb.unsubscribe(OO.EVENTS.ASSET_UPDATED, 'customerUi');
       this.mb.unsubscribe(OO.EVENTS.PLAYBACK_READY, 'customerUi');
       this.mb.unsubscribe(OO.EVENTS.ERROR, "customerUi");
+      this.mb.unsubscribe(OO.EVENTS.SET_EMBED_CODE_AFTER_OOYALA_AD, 'customerUi');
     },
 
     unsubscribeBasicPlaybackEvents: function() {
@@ -959,6 +1130,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.mb.unsubscribe(OO.EVENTS.CLOSED_CAPTIONS_INFO_AVAILABLE, "customerUi");
       this.mb.unsubscribe(OO.EVENTS.BITRATE_INFO_AVAILABLE, "customerUi");
       this.mb.unsubscribe(OO.EVENTS.CLOSED_CAPTION_CUE_CHANGED, "customerUi");
+      this.mb.unsubscribe(OO.EVENTS.CHANGE_CLOSED_CAPTION_LANGUAGE, "customerUi");
       this.mb.unsubscribe(OO.EVENTS.VOLUME_CHANGED, "customerUi");
       this.mb.unsubscribe(OO.EVENTS.PLAYBACK_READY, 'customerUi');
       this.state.isPlaybackReadySubscribed = false;
@@ -991,7 +1163,9 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
      ---------------------------------------------------------------------*/
     renderSkin: function(args) {
       if (this.state.configLoaded) {
-        _.extend(this.state, args);
+        if (args) {
+          this.state = DeepMerge(this.state, args);
+        }
         this.skin.switchComponent(this.state);
       }
     },
@@ -1033,6 +1207,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
             this.sendDiscoveryDisplayEvent("endScreen");
             this.state.pluginsElement.addClass("oo-overlay-blur");
             this.state.screenToShow = CONSTANTS.SCREEN.DISCOVERY_SCREEN;
+            this.skin.props.skinConfig.discoveryScreen.showCountDownTimerOnEndScreen = false;
           }
           break;
       }
@@ -1046,7 +1221,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     togglePlayPause: function() {
       switch (this.state.playerState) {
         case CONSTANTS.STATE.START:
-          this.mb.publish(OO.EVENTS.INITIAL_PLAY);
+          this.mb.publish(OO.EVENTS.INITIAL_PLAY, Date.now());
           break;
         case CONSTANTS.STATE.END:
           if(Utils.isAndroid() || Utils.isIos()) {
@@ -1087,15 +1262,7 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     setVolume: function(volume){
-      if(volume == 0) {
-        this.state.volumeState.muted = true;
-      }
-      else {
-        this.state.volumeState.muted = false;
-      }
-      this.state.volumeState.volume = volume;
       this.mb.publish(OO.EVENTS.CHANGE_VOLUME, volume);
-      this.renderSkin();
     },
 
     handleMuteClick: function() {
@@ -1166,17 +1333,19 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
     },
 
     sendDiscoveryClickEvent: function(selectedContentData, isAutoUpNext) {
-      this.state.upNextInfo.showing = false;
+      this.state.pluginsElement.removeClass("oo-overlay-blur");
       if (isAutoUpNext){
         this.state.upNextInfo.delayedContentData = selectedContentData;
         this.state.upNextInfo.delayedSetEmbedCodeEvent = true;
       }
       else {
+        this.state.upNextInfo.showing = false;
         this.state.screenToShow = CONSTANTS.SCREEN.LOADING_SCREEN;
         this.renderSkin();
         this.mb.publish(OO.EVENTS.PAUSE);
         if (selectedContentData.clickedVideo.embed_code){
-          this.mb.publish(OO.EVENTS.SET_EMBED_CODE, selectedContentData.clickedVideo.embed_code);
+          this.mb.publish(OO.EVENTS.SET_EMBED_CODE, selectedContentData.clickedVideo.embed_code,
+                          this.state.playerParam);
         }
         else if (selectedContentData.clickedVideo.asset){
           this.mb.publish(OO.EVENTS.SET_ASSET, selectedContentData.clickedVideo.asset);
@@ -1185,10 +1354,22 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       }
     },
 
-    sendDiscoveryDisplayEvent: function(screen) {
+    sendDiscoveryDisplayEvent: function(screenName, embedCode) {
+      var relatedVideosData = Utils.getPropertyValue(this.state.discoveryData, "relatedVideos", []);
+      var relatedVideos = relatedVideosData;
+
+      // With "Up Next" panel we only pass the data of the asset
+      // that is currently shown
+      if (embedCode) {
+        var eventAsset = _.find(relatedVideosData, function(relatedVideo) {
+          return relatedVideo.embed_code === embedCode;
+        });
+        relatedVideos = eventAsset ? [eventAsset] : [];
+      }
+
       var eventData = {
-        "relatedVideos" : this.state.discoveryData.relatedVideos,
-        "custom" : { "source" : screen}
+        "relatedVideos" : relatedVideos,
+        "custom" : { "source" : screenName }
       };
       this.mb.publish(OO.EVENTS.DISCOVERY_API.SEND_DISPLAY_EVENT, eventData);
     },
@@ -1203,7 +1384,13 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       this.renderSkin();
     },
 
-    receiveVideoQualityChangeEvent: function(eventName, targetBitrate) {
+    closePopovers: function() {
+      this.state.closedCaptionOptions.showClosedCaptionPopover = false;
+      this.state.videoQualityOptions.showVideoQualityPopover = false;
+      this.renderSkin();
+    },
+
+    receiveVideoQualityChangeEvent: function(event, targetBitrate) {
         this.state.videoQualityOptions.selectedBitrate = {
         "id": targetBitrate
       };
@@ -1224,6 +1411,18 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         "id": selectedContentData.id
       };
       this.mb.publish(OO.EVENTS.SET_TARGET_BITRATE, selectedContentData.id);
+    },
+
+    setClosedCaptionsInfo: function(videoId) {
+      var closedCaptionsInfo = this.state.closedCaptionsInfoCache[videoId];
+      if (!closedCaptionsInfo) {
+        return;
+      }
+      // Load the CC info for the video with the given id onto the state
+      this.state.closedCaptionOptions.availableLanguages = closedCaptionsInfo;
+      if (this.state.closedCaptionOptions.enabled) {
+        this.setClosedCaptionsLanguage();
+      }
     },
 
     setClosedCaptionsLanguage: function(){
@@ -1250,6 +1449,26 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
         this.state.screenToShow = CONSTANTS.SCREEN.END_SCREEN;
       }
       this.renderSkin();
+    },
+
+    onChangeClosedCaptionLanguage: function(event, language) {
+      var availableLanguages = this.state.closedCaptionOptions.availableLanguages;
+
+      //validate language is available before update and save
+      if (language && availableLanguages && _.contains(availableLanguages.languages, language)) {
+        this.state.closedCaptionOptions.language = this.state.persistentSettings.closedCaptionOptions.language = language;
+        var captionLanguage = this.state.closedCaptionOptions.enabled ? language : "";
+        var mode = this.state.closedCaptionOptions.enabled ? OO.CONSTANTS.CLOSED_CAPTIONS.HIDDEN : OO.CONSTANTS.CLOSED_CAPTIONS.DISABLED;
+        //publish set closed caption event
+        this.mb.publish(OO.EVENTS.SET_CLOSED_CAPTIONS_LANGUAGE, captionLanguage, {"mode": mode});
+        //update skin, save new closed caption language
+        this.renderSkin();
+        this.mb.publish(OO.EVENTS.SAVE_PLAYER_SETTINGS, this.state.persistentSettings);
+      }
+      //if language not in available languages, log error
+      else {
+        OO.log("Invalid closed caption language.");
+      }
     },
 
     onClosedCaptionChange: function(name, value) {
@@ -1333,7 +1552,20 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
 
     showVolumeSliderBar: function() {
       this.state.volumeState.volumeSliderVisible = true;
+      if (Utils.isAndroid()) {
+        this.startHideVolumeSliderTimer();
+      }
       this.renderSkin();
+    },
+
+    startHideVolumeSliderTimer: function() {
+        this.cancelTimer();
+        var timer = setTimeout(function() {
+          if(this.state.volumeState.volumeSliderVisible === true){
+            this.hideVolumeSliderBar();
+          }
+        }.bind(this), 3000);
+        this.state.timer = timer;
     },
 
     startHideControlBarTimer: function() {
@@ -1385,8 +1617,43 @@ OO.plugin("Html5Skin", function (OO, _, $, W) {
       if(this.state.mainVideoAspectRatio > 0) {
         this.state.mainVideoInnerWrapper.css("padding-top", this.state.mainVideoAspectRatio+"%");
       }
+    },
+
+    //find descendant video element
+    findMainVideoElement: function(element) {
+      var elements = [];
+      //use actual element
+      if (element[0]) {
+        element = element[0];
+      }
+
+      //find html5 video
+      if (element.tagName && element.tagName.toLowerCase().indexOf(CONSTANTS.MEDIA_TYPE.VIDEO) != -1) {
+        this.state.mainVideoMediaType = CONSTANTS.MEDIA_TYPE.HTML5;
+      }
+      else if (element.getElementsByTagName(CONSTANTS.MEDIA_TYPE.VIDEO).length) {
+        elements = element.getElementsByTagName(CONSTANTS.MEDIA_TYPE.VIDEO);
+        if (elements.length) {
+          element = elements[0];
+          this.state.mainVideoMediaType = CONSTANTS.MEDIA_TYPE.HTML5;
+        }
+      }
+      //find flash object
+      else if (element.tagName && element.tagName.toLowerCase().indexOf(CONSTANTS.MEDIA_TYPE.OBJECT) != -1) {
+        this.state.mainVideoMediaType = CONSTANTS.MEDIA_TYPE.FLASH;
+      }
+      else if (element.getElementsByTagName(CONSTANTS.MEDIA_TYPE.OBJECT).length) {
+        elements = element.getElementsByTagName(CONSTANTS.MEDIA_TYPE.OBJECT);
+        if (elements.length) {
+          element = elements[0];
+          this.state.mainVideoMediaType = CONSTANTS.MEDIA_TYPE.FLASH;
+        }
+      }
+      return element;
     }
   };
+
+  exposeStaticApi = Html5Skin; //for unit test only
 
   return Html5Skin;
 });
