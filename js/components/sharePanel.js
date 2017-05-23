@@ -92,9 +92,9 @@ var SharePanel = React.createClass({
           .replace("<PLAYER_ID>", this.props.playerParam.playerBrandingId)
           .replace("<PUBLISHER_ID>", this.props.playerParam.pcode);
 
-		if (this.state.shareAtTime) {
-			iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&view=embed&pcode=');
-		}
+        if (this.state.shareAtTime) {
+            iframeURL=iframeURL.replace('&pcode=', '&options[initialTime]='+initialTime+'&view=embed&pcode=');
+        }
 
       } catch(err) {
         iframeURL = "";
@@ -113,32 +113,32 @@ var SharePanel = React.createClass({
 
   getShareLocation: function() {
     var shareAtTime = this.state.shareAtTime || false;
-	if (shareAtTime) {
-	  var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
-	  if ( this.state.userPlayHeadTime ) {
-	    playheadTime = parseInt(this.state.userPlayHeadTime);
-	  }
-      var urlparser = document.createElement('a')
-      urlparser.href = window.videoInfo && window.videoInfo.url ? window.videoInfo.url : location.href;
-	  var qs= urlparser.search ? urlparser.search.substring(1).split('&')
-		.map(function(x){
-			return x.split('=',2).map(function(i){
-				return decodeURIComponent(i.trim()).replace('+', ' ');
-			})
-		})
-	   .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
-	  qs['t']=playheadTime;
-	  qs['autoplay']='1';
+    var urlparser = document.createElement('a')
+    urlparser.href = window.videoInfo && window.videoInfo.url ? window.videoInfo.url : location.href;
+    if (shareAtTime) {
+      var playheadTime = isFinite(parseInt(this.props.currentPlayhead)) ? parseInt(this.props.currentPlayhead) : '';
+      if ( this.state.userPlayHeadTime ) {
+        playheadTime = parseInt(this.state.userPlayHeadTime);
+      }
+      var qs= urlparser.search ? urlparser.search.substring(1).split('&')
+        .map(function(x){
+            return x.split('=',2).map(function(i){
+                return decodeURIComponent(i.trim()).replace('+', ' ');
+            })
+        })
+       .reduce(function(m,x){m[x[0]]=x[1];return m},{}) : {};
+      qs['t']=playheadTime;
+      qs['autoplay']='1';
       qs['view']='embed';
-	  var str=''
-	  for(var k in qs) {
-		if (str.length > 0) str += '&';
-		str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
-	  }
-	  return (location.search ? location.href.substring(0, location.href.indexOf('?')) : location.href) + '?' + str;
-	} else{ 
-	  return location.href;
-	}
+      var str=''
+      for(var k in qs) {
+        if (str.length > 0) str += '&';
+        str += encodeURIComponent(k) + '=' + encodeURIComponent(qs[k]);
+      }
+      return (urlparser.search ? urlparser.href.substring(0, urlparser.href.indexOf('?')) : urlparser.href) + '?' + str;
+    } else{ 
+      return urlparser.href;
+    }
   },
 
   handleEmailClick: function(event) {
